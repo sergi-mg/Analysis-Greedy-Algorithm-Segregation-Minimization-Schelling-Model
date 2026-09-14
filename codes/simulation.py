@@ -205,19 +205,15 @@ N_sim=100
 e=10**(-5)
 
 a1=np.array([0,0.001])
-a2=np.arange(0.05,0.4,0.05)
-a3=np.arange(0.4,1+e,0.025)
+a2=np.arange(0.1,0.4,0.1)
+a3=np.arange(0.4,0.6,0.05)
+a4=np.arange(0.6,1+e,0.025)
 alpha_values=np.concatenate((a1,a2,a3))
 alpha_values=np.unique(alpha_values)
 
-#r1=np.arange(0.01,0.15,0.01)
-r2=np.arange(0.15,0.9+e,0.05)
-#rho_0_values=np.concatenate((r1,r2))
-#rho_0_values=np.unique(rho_0_values)
+rho_0_values=np.arange(0.05,0.9+e,0.05)
 
-rho_0_values=r2[-1:]
-
-N_sim=100
+N_sim=500
 
 # Saving directories
 from os.path import exists
@@ -227,55 +223,57 @@ directory_s="../data/"
 if not exists(directory_s):
     makedirs(directory_s)
 
-directory_m="../matrix/"
+"""directory_m="../matrix/"
 if not exists(directory_m):
     makedirs(directory_m)
 
 directory_f="../data_results_fortran/"
 if not exists(directory_f):
-    makedirs(directory_f)
+    makedirs(directory_f)"""
 
-counter=98600
+counter=0
+seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim)
 print("Start simulations")
 for i_r in range(np.size(rho_0_values)):
     rho_0=rho_0_values[i_r]
     for j_a in range(np.size(alpha_values)):
         alpha=alpha_values[j_a]
-        data=np.zeros((N_sim,6),dtype="float64")
+        data=np.zeros((N_sim,3),dtype="float64") #change 3 to 6 if you want to also simulate on fortran
 
         print(counter,rho_0,alpha)
 
         for i in range(N_sim):
 
-            np.random.seed(counter)
+            np.random.seed(seed_values[counter]+i)
 
             # Initial Condition
             M_i=initial_matrix(L,rho_0,0.5)
-            fD_M = open(directory_m+"matrix.dat", "w")
-            np.savetxt(fD_M, M_i, fmt="%d")           
-            fD_M.flush()
-            os.fsync(fD_M.fileno())
-            fD_M.close()
+
+            """fD_M=open(directory_m+"matrix.dat", "w")
+                                                np.savetxt(fD_M, M_i, fmt="%d")           
+                                                fD_M.flush()
+                                                os.fsync(fD_M.fileno())
+                                                fD_M.close()""" #only for fortran simulation
 
             # Python Simulation
             final_state=our_model(M_i,tau,alpha,L,rho_0)
             data[i][:3]=final_state[:]
 
-            # Fortran Simulation
+            """# Fortran Simulation
+                                    
+                                                if alpha!=0:
+                                                    cmd = ["./schelling.exe", str(L), str(alpha)+"d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
+                                                else:
+                                                    cmd = ["./schelling.exe", str(L), "0.d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
+                                    
+                                                result = subprocess.run(cmd)
+                                    
+                                                results=np.loadtxt("../data_results_fortran/results_simulation.dat"
+                                                                   ,usecols=[-3,-2,-1])
+                                    
+                                                data[i][3:]=results[:]"""
 
-            if alpha!=0:
-                cmd = ["./schelling.exe", str(L), str(alpha)+"d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
-            else:
-                cmd = ["./schelling.exe", str(L), "0.d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
-
-            result = subprocess.run(cmd)
-
-            results=np.loadtxt("../data_results_fortran/results_simulation.dat"
-                               ,usecols=[-3,-2,-1])
-
-            data[i][3:]=results[:]
-
-            counter+=1
+        counter+=1
 
         #save the data
         name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
