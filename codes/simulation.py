@@ -200,7 +200,6 @@ def our_model(M_i, tau, alpha, L, rho_0):
 # Parameters
 tau=0.5
 L=20
-N_sim=100
 
 e=10**(-5)
 

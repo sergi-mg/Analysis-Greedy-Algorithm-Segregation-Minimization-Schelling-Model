@@ -149,17 +149,15 @@ def get_edges(values):
 e=0.00001
 
 a1=np.array([0,0.001])
-a2=np.arange(0.05,0.4,0.05)
-a3=np.arange(0.4,1+e,0.025)
+a2=np.arange(0.1,0.4,0.1)
+a3=np.arange(0.4,0.6,0.05)
+a4=np.arange(0.6,1+e,0.025)
 alpha_values=np.concatenate((a1,a2,a3))
 alpha_values=np.unique(alpha_values)
 
-r1=np.arange(0.01,0.15,0.01)
-r2=np.arange(0.15,0.9+e,0.05)
-rho_0_values=np.concatenate((r1,r2))
-rho_0_values=np.unique(rho_0_values)
+rho_0_values=np.arange(0.05,0.9+e,0.05)
 
-N_sim=100
+N_sim=500
 
 #Python results
 R_p=statistics_matrix(rho_0_values,alpha_values,N_sim,"Python")
@@ -171,12 +169,12 @@ for v in range (3):
         results_p[:,i,v],d_results_p[:,i,v]=xifres(R_p[0][:,i,v],R_p[1][:,i,v],10,-10)
 
 #Fortran results
-R_f=statistics_matrix(rho_0_values,alpha_values,N_sim,"Fortran")
+"""R_f=statistics_matrix(rho_0_values,alpha_values,N_sim,"Fortran")
 results_f=np.zeros((len(alpha_values),len(rho_0_values),3))
 d_results_f=np.zeros((len(alpha_values),len(rho_0_values),3))
 for v in range (3):
     for i in range(np.size(rho_0_values)):
-        results_f[:,i,v],d_results_f[:,i,v]=xifres(R_f[0][:,i,v],R_f[1][:,i,v],10,-10)
+        results_f[:,i,v],d_results_f[:,i,v]=xifres(R_f[0][:,i,v],R_f[1][:,i,v],10,-10)"""
 
 
 #------------------------------------------------------------------------------------------------
@@ -210,7 +208,7 @@ for v in range(3):
 
 #Fortran
 
-for v in range(3):
+"""for v in range(3):
 
     Z=results_f[:,:,v]
 
@@ -223,4 +221,4 @@ for v in range(3):
     name=variables[v]
     plt.savefig(directory_s+name+"_fortran.pdf",bbox_inches="tight")
     plt.close()
-
+"""
