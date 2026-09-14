@@ -214,6 +214,7 @@ __marimo__/
 data/
 data_results_fortran/
 matrix/
+data_classic/
 *.dat
 
 # Images
