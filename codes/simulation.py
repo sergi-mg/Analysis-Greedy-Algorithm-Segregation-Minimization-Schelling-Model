@@ -116,6 +116,102 @@ def G_function(matrix,threshold,alpha,L,rho_0):
 
     return G,H,S,vacants,unhappy,unhappy_counter
 
+#Classic Schelling
+@njit
+def classic_schelling(M_i, tau, L, rho_0):
+    """Executes the classic algorithm and returns a tupple with the final
+    configuration, a tupple with (T,h,G,H,S) from the G_function
+    applied to the final configuration and the number of iterations."""
+
+    M=M_i.copy()
+
+    N_v=int(round((rho_0)*L**2,0))
+    N_uh=1 #different from zero to enter the loop
+    T_f=0 #number of movements
+    alpha=0.5 #it will not be used, only for reusing the system's state evaluation function
+
+    #algorithm
+    for g in range(1000):
+        if g==999:
+            print("Final state not reached for alpha=",alpha," and rho_0=",rho_0)
+        #end if
+        if N_uh==0:
+            break
+        #end if 
+        #how many unhappy agents? where? 
+        G_out,H_out,S_out,vacants,uh_list,N_uh_out=G_function(M,tau,alpha,L,rho_0)
+        if N_uh_out==0:
+            break
+        #end if 
+        #movement selection
+        N_uh=N_uh_out
+        for i in range(N_uh_out):
+            #we chose an unhappy agent at random
+            rand_uh=np.random.randint(0,N_uh)
+            #we look for the most suitable movement
+            vacants_try=vacants.copy()
+            N_p_v=N_v #possible vacants
+            movement=0 #check for movement
+            for j in range(N_v):
+                #select a random vacant
+                rand_vacant=np.random.randint(0,N_p_v)
+                #new matrix
+                new_M=M.copy()
+                #movement
+                new_M[vacants_try[rand_vacant,0],vacants_try[rand_vacant,1]]=M[uh_list[rand_uh,0],uh_list[rand_uh,1]]
+                new_M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=0
+                #new state
+                G_out,H_out,S_out,vacants_out,uh_list_out,N_uh_try=G_function(new_M,tau,alpha,L,rho_0)
+                #if the agent is unhappy we discard this movement and check new vacant 
+                unhappy=0
+
+                for k in range(N_uh_try):
+                    if (uh_list_out[k,0]==vacants_try[rand_vacant,0])and(uh_list_out[k,1]==vacants_try[rand_vacant,1]):
+                        unhappy=1
+                        break
+                    #endif
+                #endfor
+
+                if unhappy==0:
+                    #make the movement
+                    M[vacants_try[rand_vacant,0],vacants_try[rand_vacant,1]]=M[uh_list[rand_uh,0],uh_list[rand_uh,1]]
+                    M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=0
+                    T_f=T_f+1
+                    movement=1
+                    break
+                else:
+                    #the agent cannot move, we go to the following vacant
+                    vacants_try[rand_uh,:]=vacants_try[N_uh-1,:]
+                    vacants_try[N_uh-1,:]=[0,0]
+                    N_p_v=N_p_v-1
+                    if N_p_v==0:
+                        break
+                    #endif
+                #endif
+
+            #end for
+            #we check if the agent has moved
+            if movement==1:
+                break
+            else:
+                #the agent cannot move, we go to the following agent
+                uh_list[rand_uh,:]=uh_list[N_uh-1,:]
+                uh_list[N_uh-1,:]=[0,0]
+                N_uh=N_uh-1
+                if N_uh==0:
+                    break
+                #endif
+            #endif
+        #end for
+    #end for
+
+    G_out,H_out,S_out,vacants_out,uh_list_out,N_uh_try=G_function(M,tau,alpha,L,rho_0)
+    S_f=S_out
+    H_f=H_out
+
+    return S_f,H_f,T_f
+
+
 #Greedy algorithm
 @njit
 def our_model(M_i, tau, alpha, L, rho_0):
@@ -194,8 +290,10 @@ def our_model(M_i, tau, alpha, L, rho_0):
 
 
 #------------------------------------------------------------------------------------------------
-#Simulation
+#Simulation: greedy algorithm
 #------------------------------------------------------------------------------------------------
+
+print("Simulation greedy")
 
 # Parameters
 tau=0.5
@@ -239,8 +337,6 @@ for i_r in range(np.size(rho_0_values)):
         alpha=alpha_values[j_a]
         data=np.zeros((N_sim,3),dtype="float64") #change 3 to 6 if you want to also simulate on fortran
 
-        print(counter,rho_0,alpha)
-
         for i in range(N_sim):
 
             np.random.seed(seed_values[counter]+i)
@@ -278,3 +374,58 @@ for i_r in range(np.size(rho_0_values)):
         name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
         np.savetxt(name,data)
 
+
+
+
+#------------------------------------------------------------------------------------------------
+#Simulation: classic Schelling
+#------------------------------------------------------------------------------------------------
+
+print("Simulation classic")
+
+# Parameters
+tau=0.5
+L=20
+
+e=10**(-5)
+
+
+rho_0_values_c=np.arange(0.1,0.5+e,0.1)
+
+N_sim=500
+
+# Saving directories
+from os.path import exists
+from os import makedirs
+    
+directory_c="../data_classic/"
+if not exists(directory_c):
+    makedirs(directory_c)
+
+
+counter=0
+seed_values=np.arange(0,len(rho_0_values_c)*N_sim,N_sim)
+print("Start simulations")
+for i_r in range(np.size(rho_0_values)):
+    data_c=np.zeros((N_sim,3),dtype="float64") 
+
+    for i in range(N_sim):
+
+        np.random.seed(seed_values[counter]+i)
+
+        # Initial Condition
+        M_i=initial_matrix(L,rho_0,0.5)
+
+        # Python Simulation
+        final_state=classic_schelling(M_i,tau,L,rho_0)
+        data_c[i][:]=final_state[:]
+
+    #end for
+
+    counter+=1
+
+    #save the data
+    name=directory_c+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    np.savetxt(name,data)
+
+#end for
