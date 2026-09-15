@@ -181,8 +181,8 @@ def classic_schelling(M_i, tau, L, rho_0):
                     break
                 else:
                     #the agent cannot move, we go to the following vacant
-                    vacants_try[rand_uh,:]=vacants_try[N_uh-1,:]
-                    vacants_try[N_uh-1,:]=[0,0]
+                    vacants_try[rand_vacant,:]=vacants_try[N_p_v-1,:]
+                    vacants_try[N_p_v-1,:]=[0,0]
                     N_p_v=N_p_v-1
                     if N_p_v==0:
                         break
@@ -305,7 +305,7 @@ a1=np.array([0,0.001])
 a2=np.arange(0.1,0.4,0.1)
 a3=np.arange(0.4,0.6,0.05)
 a4=np.arange(0.6,1+e,0.025)
-alpha_values=np.concatenate((a1,a2,a3))
+alpha_values=np.concatenate((a1,a2,a3,a4))
 alpha_values=np.unique(alpha_values)
 
 rho_0_values=np.arange(0.05,0.9+e,0.05)
@@ -329,7 +329,8 @@ if not exists(directory_f):
     makedirs(directory_f)"""
 
 counter=0
-seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim)
+seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim) #first 500
+seed_values=seed_values+len(rho_0_values)*len(alpha_values)*N_sim #second 500
 print("Start simulations")
 for i_r in range(np.size(rho_0_values)):
     rho_0=rho_0_values[i_r]
@@ -348,34 +349,34 @@ for i_r in range(np.size(rho_0_values)):
                                                 np.savetxt(fD_M, M_i, fmt="%d")           
                                                 fD_M.flush()
                                                 os.fsync(fD_M.fileno())
-                                                fD_M.close()""" #only for fortran simulation
+                                                fD_M.close() #only for fortran simulation"""
 
             # Python Simulation
             final_state=our_model(M_i,tau,alpha,L,rho_0)
             data[i][:3]=final_state[:]
 
-            """# Fortran Simulation
+            # Fortran Simulation
                                     
-                                                if alpha!=0:
-                                                    cmd = ["./schelling.exe", str(L), str(alpha)+"d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
-                                                else:
-                                                    cmd = ["./schelling.exe", str(L), "0.d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
-                                    
-                                                result = subprocess.run(cmd)
-                                    
-                                                results=np.loadtxt("../data_results_fortran/results_simulation.dat"
-                                                                   ,usecols=[-3,-2,-1])
-                                    
-                                                data[i][3:]=results[:]"""
+            """if alpha!=0:
+                cmd = ["./schelling.exe", str(L), str(alpha)+"d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
+            else:
+                cmd = ["./schelling.exe", str(L), "0.d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
+
+            result = subprocess.run(cmd)
+
+            results=np.loadtxt("../data_results_fortran/results_simulation.dat"
+                               ,usecols=[-3,-2,-1])
+
+            data[i][3:]=results[:]"""
 
         counter+=1
 
         #save the data
-        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_2.dat"
         np.savetxt(name,data)
 
 
-
+print("End simulations")
 
 #------------------------------------------------------------------------------------------------
 #Simulation: classic Schelling
@@ -392,7 +393,7 @@ e=10**(-5)
 
 rho_0_values_c=np.arange(0.1,0.5+e,0.1)
 
-N_sim=500
+N_sim=1000
 
 # Saving directories
 from os.path import exists
@@ -406,7 +407,10 @@ if not exists(directory_c):
 counter=0
 seed_values=np.arange(0,len(rho_0_values_c)*N_sim,N_sim)
 print("Start simulations")
-for i_r in range(np.size(rho_0_values)):
+for i_r in range(np.size(rho_0_values_c)):
+    rho_0=rho_0_values_c[i_r]
+    print(rho_0)
+
     data_c=np.zeros((N_sim,3),dtype="float64") 
 
     for i in range(N_sim):
@@ -425,7 +429,9 @@ for i_r in range(np.size(rho_0_values)):
     counter+=1
 
     #save the data
-    name=directory_c+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
-    np.savetxt(name,data)
+    name=directory_c+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    np.savetxt(name,data_c)
 
 #end for
+
+print("End simulations")

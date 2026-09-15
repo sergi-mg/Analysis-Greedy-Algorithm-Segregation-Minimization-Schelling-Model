@@ -86,7 +86,7 @@ def calc_reg(x,y):
     return m,dm,b,db,r
 
 
-def statistics_matrix(rho_val,alpha_val,N_sim,program):
+def statistics_matrix(rho_val,alpha_val,N_sim,program,n_files=1):
     """Reads the files for the rho and alpha (1D arrays) indicated and returns
     the mean and its uncertainty of the three variables S,H,steps for each
     pair rho-alpha: M[alpha,rho,variable] for mean and uncertainty, two components
@@ -116,6 +116,16 @@ def statistics_matrix(rho_val,alpha_val,N_sim,program):
             S=read_M[:,0+mod]
             H=read_M[:,1+mod]
             steps=read_M[:,2+mod]
+            if n_files==2:
+                name="../data/"+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_2.dat"
+                read_M=np.loadtxt(fname=name,dtype="float64")
+                #variables studied
+                S_2=read_M[:,0+mod]
+                H_2=read_M[:,1+mod]
+                steps_2=read_M[:,2+mod]
+                S=np.concatenate((S,S_2))
+                H=np.concatenate((H,H_2))
+                steps=np.concatenate((steps,steps_2))
             #steps-segregation correlation
             (m,dm,b,db,r)=calc_reg(S, steps)
             correlation[i,j]=r
@@ -152,7 +162,7 @@ a1=np.array([0,0.001])
 a2=np.arange(0.1,0.4,0.1)
 a3=np.arange(0.4,0.6,0.05)
 a4=np.arange(0.6,1+e,0.025)
-alpha_values=np.concatenate((a1,a2,a3))
+alpha_values=np.concatenate((a1,a2,a3,a4))
 alpha_values=np.unique(alpha_values)
 
 rho_0_values=np.arange(0.05,0.9+e,0.05)
@@ -160,7 +170,7 @@ rho_0_values=np.arange(0.05,0.9+e,0.05)
 N_sim=500
 
 #Python results
-R_p=statistics_matrix(rho_0_values,alpha_values,N_sim,"Python")
+R_p=statistics_matrix(rho_0_values,alpha_values,N_sim,"Python",n_files=2)
 
 results_p=np.zeros((len(alpha_values),len(rho_0_values),3))
 d_results_p=np.zeros((len(alpha_values),len(rho_0_values),3))
