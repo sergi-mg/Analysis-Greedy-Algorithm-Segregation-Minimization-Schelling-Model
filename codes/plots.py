@@ -59,6 +59,15 @@ def xifres(values,uncertainties,exp_max,exp_min):
     return values_c,uncertainties_c
 
 @njit
+def xifres_escalar(value,error,exp_max,exp_min):
+    for k in range(exp_max,exp_min,-1):
+        if error>=1.95*np.power(10.0, k):
+            value_c=round(value,-k)
+            error_c=round(error,-k)
+            break
+    return value_c,error_c
+
+@njit
 def calc_reg(x,y):
     """Returns the parameters of a linear regression of y(x).
     y and x are numpy 1D-arrays."""
@@ -152,6 +161,40 @@ def get_edges(values):
         edges[-1]=values[-1]+(values[-1]-values[-2])/2
         return edges
 
+def raw_data(rho_0,alpha_val,N_sim,index,n_files=1):
+    """Reads the files for the indicated rho_0 and returns the
+    raw data (N_sim*n_files,N_alpha) of the final state (expected 
+    file 3 columns - only python). Input:
+        - N: number of nodes.
+        - N_sim: number of simulations.
+        - rho_0: vacantd ensity value.
+        - alpha_val: 1D array (N_alpha)
+        - index: integer indicating the variable: 0-S, 1-H, 2-T. 
+        - n_files: number of files to read (1 or 2)"""
+
+    
+    directory="../data/"
+    
+    N_alpha=np.size(alpha_val)
+    results=np.zeros((N_sim*n_files,N_alpha),dtype="float64")
+    
+    
+    for j in range(N_alpha):
+        alpha=alpha_val[j]
+        #reading the file
+        name="../data/"+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+        read_M=np.loadtxt(fname=name,dtype="float64")
+        #variables studied
+        R_1=read_M[:,index]
+        if n_files==2:
+            name="../data/"+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_2.dat"
+            read_M=np.loadtxt(fname=name,dtype="float64")
+            #variables studied
+            R_2=read_M[:,index]
+            results[:,j]=np.concatenate((R_1,R_2))
+ 
+    return results
+
 
 #------------------------------------------------------------------------------------------------
 #Reading the data
@@ -169,7 +212,6 @@ rho_0_values=np.arange(0.05,0.9+e,0.05)
 
 N_sim=500
 
-#Python results
 R_p=statistics_matrix(rho_0_values,alpha_values,N_sim,"Python",n_files=2)
 
 results_p=np.zeros((len(alpha_values),len(rho_0_values),3))
@@ -178,17 +220,9 @@ for v in range (3):
     for i in range(np.size(rho_0_values)):
         results_p[:,i,v],d_results_p[:,i,v]=xifres(R_p[0][:,i,v],R_p[1][:,i,v],10,-10)
 
-#Fortran results
-"""R_f=statistics_matrix(rho_0_values,alpha_values,N_sim,"Fortran")
-results_f=np.zeros((len(alpha_values),len(rho_0_values),3))
-d_results_f=np.zeros((len(alpha_values),len(rho_0_values),3))
-for v in range (3):
-    for i in range(np.size(rho_0_values)):
-        results_f[:,i,v],d_results_f[:,i,v]=xifres(R_f[0][:,i,v],R_f[1][:,i,v],10,-10)"""
-
 
 #------------------------------------------------------------------------------------------------
-#Plots
+#Heatmaps - S, H, T
 #------------------------------------------------------------------------------------------------        
 directory_s="../plots/"
 if not exists(directory_s):
@@ -208,27 +242,345 @@ for v in range(3):
 
     plt.figure(figsize=(10,6))
     plt.pcolormesh(alpha_edges,rho_edges,Z.T,cmap='viridis')
-    plt.xlabel(r'$\alpha$')
-    plt.ylabel(r'$\rho_0$')
+    plt.xlabel(r'$\alpha$',fontsize=18)
+    plt.ylabel(r'$\rho_0$',fontsize=18)
     cbar=plt.colorbar()
-    cbar.set_label(titles[v])
+    cbar.set_label(titles[v],fontsize=18)
     name=variables[v]
     plt.savefig(directory_s+name+"_python.pdf",bbox_inches="tight")
     plt.close()
 
-#Fortran
 
-"""for v in range(3):
+#------------------------------------------------------------------------------------------------
+#Boxplots - S
+#------------------------------------------------------------------------------------------------   
 
-    Z=results_f[:,:,v]
+#Boxplots 
+N_sim=500
+#data
+data=[]
+rho_values=np.arange(0.1,0.5,0.1)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    data.append(raw_data(rho_0,alpha_values,N_sim,0,n_files=2))
 
-    plt.figure(figsize=(10,6))
-    plt.pcolormesh(alpha_edges,rho_edges,Z.T,cmap='viridis')
-    plt.xlabel(r'$\alpha$')
-    plt.ylabel(r'$\rho_0$')
-    cbar=plt.colorbar()
-    cbar.set_label(titles[v])
-    name=variables[v]
-    plt.savefig(directory_s+name+"_fortran.pdf",bbox_inches="tight")
-    plt.close()
-"""
+
+#data_classic
+data_c=[]
+N_sim=1000
+rho_values=np.arange(0.1,0.5,0.1)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    #reading the file
+    name="../data_classic/"+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    read_M=np.loadtxt(fname=name,dtype="float64")
+    #variables studied
+    data_c.append(read_M[:,0])
+
+#%%
+#plot
+cmap = plt.get_cmap("viridis")
+#create the subplot
+fig, ax = plt.subplots(2, 2, figsize=(16,10))
+fig.subplots_adjust(wspace=0.2)
+counter=0
+for i in range(2):
+    for j in range(2):
+        rho_0=rho_values[counter]
+        results=data[counter]
+        ax[i][j].boxplot(
+            results,
+            positions=alpha_values,
+            widths=0.015,
+            showfliers=True,
+            flierprops=dict(
+            marker='x',        # tipo de marcador
+            markersize=2,      # tamaño
+            linestyle='none'   # sin líneas
+        ), medianprops=dict(
+            color=cmap(0.67),      # color de la mediana
+            linewidth=2      # grosor opcional
+        )
+        )
+        
+        
+        """means = results.mean(axis=0)
+        ax[i][j].plot(alpha_values,means,linestyle='none',marker='o',markersize=2,
+                color=cmap(0))"""
+
+        constant_results=data_c[counter]
+        p25,p50,p75=np.percentile(constant_results,[25,50,75])
+        p5,p50,p95=np.percentile(constant_results,[5,50,95])
+
+        ax[i,j].axhspan(p5,p95,alpha=0.15,color=cmap(0.2))
+        ax[i,j].axhspan(p25,p75,alpha=0.3,color=cmap(0.2))
+        ax[i,j].axhline(p50,linestyle='--',color=cmap(0.2))
+        
+        ax[i][j].set_xlim(-0.02, 1.02)
+        #ax[i][j].set_ylim(0.65,0.95)
+        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_xticks(ticks)
+        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].tick_params(axis='both', labelsize=16)
+        ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
+        
+        ax[i][j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0=$"+str(round(rho_0,1))+")",fontsize=18)
+        if i!=0:
+            ax[i][j].set_xlabel(r"$\alpha$",fontsize=18)
+
+        counter+=1
+
+
+from matplotlib.lines import Line2D
+
+
+legend_elements = [
+Line2D([0], [0], color=cmap(0.67), lw=2, label='Greedy algorithm'),
+Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
+]
+
+# Leyenda global
+fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
+           bbox_to_anchor=(0.5, .95),ncol=2)
+name="S_boxplot"
+plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
+plt.close()
+
+
+
+#------------------------------------------------------------------------------------------------
+#Mean Value + 1.96 sigma uncertainty - S
+#------------------------------------------------------------------------------------------------   
+
+#data_classic
+data_c=[]
+N_sim=1000
+rho_values=np.arange(0.1,0.5,0.1)
+rho_values_heatmaps=np.arange(0.05,0.9+e,0.05)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    #reading the file
+    name="../data_classic/"+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    read_M=np.loadtxt(fname=name,dtype="float64")
+    #variables studied
+    data_c.append(read_M[:,0])
+
+#%%
+#plot
+cmap = plt.get_cmap("viridis")
+#create the subplot
+fig, ax = plt.subplots(2, 2, figsize=(16,10))
+fig.subplots_adjust(wspace=0.2)
+counter=0
+for i in range(2):
+    for j in range(2):
+        rho_0=rho_values[counter]
+        index=1+2*counter
+        results=results_p[:,index,0]
+        d_results=d_results_p[:,index,0]
+        ax[i][j].errorbar(alpha_values,results,xerr=0,yerr=d_results,marker="o",markersize=3.5,linestyle="None",
+            color=cmap(0.67))
+
+        constant_results=data_c[counter]
+        mean,unc=statistics(constant_results)
+        mean,unc=xifres_escalar(mean,unc,2,-6)
+
+        ax[i,j].axhspan(mean-unc,mean+unc,alpha=0.3,color=cmap(0.2))
+        ax[i,j].axhline(mean,linestyle='--',color=cmap(0.2))
+        
+        ax[i][j].set_xlim(-0.02, 1.02)
+        #ax[i][j].set_ylim(0.65,0.95)
+        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_xticks(ticks)
+        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].tick_params(axis='both', labelsize=16)
+        ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
+        
+        ax[i][j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0=$"+str(round(rho_0,1))+")",fontsize=18)
+        if i!=0:
+            ax[i][j].set_xlabel(r"$\alpha$",fontsize=18)
+
+        counter+=1
+
+
+from matplotlib.lines import Line2D
+
+
+legend_elements = [
+Line2D([0], [0], color=cmap(0.67), lw=2, label='Greedy algorithm'),
+Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
+]
+
+# Leyenda global
+fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
+           bbox_to_anchor=(0.5, .95),ncol=2)
+name="S_mean"
+plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
+plt.close()
+
+#------------------------------------------------------------------------------------------------
+#Boxplots - T
+#------------------------------------------------------------------------------------------------   
+
+#Boxplots 
+N_sim=500
+#data
+data=[]
+rho_values=np.arange(0.1,0.5,0.1)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    data.append(raw_data(rho_0,alpha_values,N_sim,2,n_files=2))
+
+
+#data_classic
+data_c=[]
+N_sim=1000
+rho_values=np.arange(0.1,0.5,0.1)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    #reading the file
+    name="../data_classic/"+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    read_M=np.loadtxt(fname=name,dtype="float64")
+    #variables studied
+    data_c.append(read_M[:,2])
+
+#%%
+#plot
+cmap = plt.get_cmap("viridis")
+#create the subplot
+fig, ax = plt.subplots(2, 2, figsize=(16,10))
+fig.subplots_adjust(wspace=0.2)
+counter=0
+for i in range(2):
+    for j in range(2):
+        rho_0=rho_values[counter]
+        results=data[counter]
+        ax[i][j].boxplot(
+            results,
+            positions=alpha_values,
+            widths=0.015,
+            showfliers=True,
+            flierprops=dict(
+            marker='x',        # tipo de marcador
+            markersize=2,      # tamaño
+            linestyle='none'   # sin líneas
+        ), medianprops=dict(
+            color=cmap(0.67),      # color de la mediana
+            linewidth=2      # grosor opcional
+        )
+        )
+        
+        
+        """means = results.mean(axis=0)
+        ax[i][j].plot(alpha_values,means,linestyle='none',marker='o',markersize=2,
+                color=cmap(0))"""
+
+        constant_results=data_c[counter]
+        p25,p50,p75=np.percentile(constant_results,[25,50,75])
+        p5,p50,p95=np.percentile(constant_results,[5,50,95])
+
+        ax[i,j].axhspan(p5,p95,alpha=0.15,color=cmap(0.2))
+        ax[i,j].axhspan(p25,p75,alpha=0.3,color=cmap(0.2))
+        ax[i,j].axhline(p50,linestyle='--',color=cmap(0.2))
+        
+        ax[i][j].set_xlim(-0.02, 1.02)
+        #ax[i][j].set_ylim(0.65,0.95)
+        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_xticks(ticks)
+        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].tick_params(axis='both', labelsize=16)
+        ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
+        
+        ax[i][j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0=$"+str(round(rho_0,1))+")",fontsize=18)
+        if i!=0:
+            ax[i][j].set_xlabel(r"$\alpha$",fontsize=18)
+
+        counter+=1
+
+
+from matplotlib.lines import Line2D
+
+
+legend_elements = [
+Line2D([0], [0], color=cmap(0.67), lw=2, label='Greedy algorithm'),
+Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
+]
+
+# Leyenda global
+fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
+           bbox_to_anchor=(0.5, .95),ncol=2)
+name="T_boxplot"
+plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
+plt.close()
+
+
+
+#------------------------------------------------------------------------------------------------
+#Mean Value + 1.96 sigma uncertainty - T
+#------------------------------------------------------------------------------------------------   
+
+#data_classic
+data_c=[]
+N_sim=1000
+rho_values=np.arange(0.1,0.5,0.1)
+rho_values_heatmaps=np.arange(0.05,0.9+e,0.05)
+for i in range(len(rho_values)):
+    rho_0=rho_values[i]
+    #reading the file
+    name="../data_classic/"+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    read_M=np.loadtxt(fname=name,dtype="float64")
+    #variables studied
+    data_c.append(read_M[:,2])
+
+#%%
+#plot
+cmap = plt.get_cmap("viridis")
+#create the subplot
+fig, ax = plt.subplots(2, 2, figsize=(16,10))
+fig.subplots_adjust(wspace=0.2)
+counter=0
+for i in range(2):
+    for j in range(2):
+        rho_0=rho_values[counter]
+        index=1+2*counter
+        results=results_p[:,index,2]
+        d_results=d_results_p[:,index,2]
+        ax[i][j].errorbar(alpha_values,results,xerr=0,yerr=d_results,marker="o",markersize=3.5,linestyle="None",
+            color=cmap(0.67))
+
+        constant_results=data_c[counter]
+        mean,unc=statistics(constant_results)
+        mean,unc=xifres_escalar(mean,unc,2,-6)
+
+        ax[i,j].axhspan(mean-unc,mean+unc,alpha=0.3,color=cmap(0.2))
+        ax[i,j].axhline(mean,linestyle='--',color=cmap(0.2))
+        
+        ax[i][j].set_xlim(-0.02, 1.02)
+        #ax[i][j].set_ylim(0.65,0.95)
+        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_xticks(ticks)
+        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].tick_params(axis='both', labelsize=16)
+        ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
+        
+        ax[i][j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0=$"+str(round(rho_0,1))+")",fontsize=18)
+        if i!=0:
+            ax[i][j].set_xlabel(r"$\alpha$",fontsize=18)
+
+        counter+=1
+
+
+from matplotlib.lines import Line2D
+
+
+legend_elements = [
+Line2D([0], [0], color=cmap(0.67), lw=2, label='Greedy algorithm'),
+Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
+]
+
+# Leyenda global
+fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
+           bbox_to_anchor=(0.5, .95),ncol=2)
+name="T_mean"
+plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
+plt.close()
