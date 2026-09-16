@@ -235,19 +235,25 @@ titles=[r"$\mathcal{S}$",r"$\mathcal{H}$",r"$\mathcal{T}$"]
 variables=["S","H","T"]
 
 #Python
-
+zmin=[0.7,0.996,0]
+zmax=[0.9,1,200]
 for v in range(3):
 
     Z=results_p[:,:,v]
 
     plt.figure(figsize=(10,6))
-    plt.pcolormesh(alpha_edges,rho_edges,Z.T,cmap='viridis')
+    plt.pcolormesh(alpha_edges,rho_edges,Z.T,cmap='viridis',vmin=zmin[v],
+    vmax=zmax[v])
     plt.xlabel(r'$\alpha$',fontsize=18)
     plt.ylabel(r'$\rho_0$',fontsize=18)
     cbar=plt.colorbar()
     cbar.set_label(titles[v],fontsize=18)
     name=variables[v]
-    plt.savefig(directory_s+name+"_python.pdf",bbox_inches="tight")
+    #plt.ylim(0,0.9)
+    ticks = np.arange(0.1, 1, 0.1)
+    plt.yticks(ticks)
+    plt.tick_params(axis='both', labelsize=16)
+    plt.savefig(directory_s+name+"_heatmap.pdf",bbox_inches="tight")
     plt.close()
 
 
@@ -277,7 +283,9 @@ for i in range(len(rho_values)):
     #variables studied
     data_c.append(read_M[:,0])
 
-#%%
+#limits
+y_min=[0.74,0.68,0.65,0.65]
+y_max=[0.95,0.95,0.95,0.95]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -310,17 +318,18 @@ for i in range(2):
 
         constant_results=data_c[counter]
         p25,p50,p75=np.percentile(constant_results,[25,50,75])
-        p5,p50,p95=np.percentile(constant_results,[5,50,95])
+        IRC=p75-p25
 
-        ax[i,j].axhspan(p5,p95,alpha=0.15,color=cmap(0.2))
+        ax[i,j].axhspan(p25-1.5*IRC,p75+1.5*IRC,alpha=0.15,color=cmap(0.2))
         ax[i,j].axhspan(p25,p75,alpha=0.3,color=cmap(0.2))
         ax[i,j].axhline(p50,linestyle='--',color=cmap(0.2))
         
         ax[i][j].set_xlim(-0.02, 1.02)
         #ax[i][j].set_ylim(0.65,0.95)
-        ticks = np.arange(0, 1, 0.2)
+        ticks = np.arange(0, 1.1, 0.2)
+
         ax[i][j].set_xticks(ticks)
-        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].set_ylim(y_min[counter],y_max[counter])
         ax[i][j].tick_params(axis='both', labelsize=16)
         ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
         
@@ -341,7 +350,7 @@ Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
 
 # Leyenda global
 fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
-           bbox_to_anchor=(0.5, .95),ncol=2)
+           bbox_to_anchor=(0.5, .9),ncol=2)
 name="S_boxplot"
 plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
 plt.close()
@@ -365,7 +374,9 @@ for i in range(len(rho_values)):
     #variables studied
     data_c.append(read_M[:,0])
 
-#%%
+#limits
+y_min=[0.82,0.76,0.725,0.7]
+y_max=[0.875,0.88,0.88,0.9]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -390,9 +401,10 @@ for i in range(2):
         
         ax[i][j].set_xlim(-0.02, 1.02)
         #ax[i][j].set_ylim(0.65,0.95)
-        ticks = np.arange(0, 1, 0.2)
+        ticks = np.arange(0, 1.1, 0.2)
+
         ax[i][j].set_xticks(ticks)
-        #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
+        ax[i][j].set_ylim(y_min[counter],y_max[counter])
         ax[i][j].tick_params(axis='both', labelsize=16)
         ax[i][j].set_xticklabels([f"{t:.1f}" for t in ticks])
         
@@ -413,7 +425,7 @@ Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
 
 # Leyenda global
 fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
-           bbox_to_anchor=(0.5, .95),ncol=2)
+           bbox_to_anchor=(0.5, .9),ncol=2)
 name="S_mean"
 plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
 plt.close()
@@ -444,7 +456,9 @@ for i in range(len(rho_values)):
     #variables studied
     data_c.append(read_M[:,2])
 
-#%%
+#limits
+y_min=[100,50,50,40]
+y_max=[275,275,250,250]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -477,15 +491,16 @@ for i in range(2):
 
         constant_results=data_c[counter]
         p25,p50,p75=np.percentile(constant_results,[25,50,75])
-        p5,p50,p95=np.percentile(constant_results,[5,50,95])
+        IRC=p75-p25
 
-        ax[i,j].axhspan(p5,p95,alpha=0.15,color=cmap(0.2))
+        ax[i,j].axhspan(p25-1.5*IRC,p75+1.5*IRC,alpha=0.15,color=cmap(0.2))
         ax[i,j].axhspan(p25,p75,alpha=0.3,color=cmap(0.2))
         ax[i,j].axhline(p50,linestyle='--',color=cmap(0.2))
         
         ax[i][j].set_xlim(-0.02, 1.02)
-        #ax[i][j].set_ylim(0.65,0.95)
-        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_ylim(y_min[counter],y_max[counter])
+        ticks = np.arange(0, 1.1, 0.2)
+
         ax[i][j].set_xticks(ticks)
         #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
         ax[i][j].tick_params(axis='both', labelsize=16)
@@ -508,7 +523,7 @@ Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
 
 # Leyenda global
 fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
-           bbox_to_anchor=(0.5, .95),ncol=2)
+           bbox_to_anchor=(0.5, .9),ncol=2)
 name="T_boxplot"
 plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
 plt.close()
@@ -532,7 +547,9 @@ for i in range(len(rho_values)):
     #variables studied
     data_c.append(read_M[:,2])
 
-#%%
+#limits
+y_min=[130,100,80,60]
+y_max=[190,200,190,170]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -556,8 +573,9 @@ for i in range(2):
         ax[i,j].axhline(mean,linestyle='--',color=cmap(0.2))
         
         ax[i][j].set_xlim(-0.02, 1.02)
-        #ax[i][j].set_ylim(0.65,0.95)
-        ticks = np.arange(0, 1, 0.2)
+        ax[i][j].set_ylim(y_min[counter],y_max[counter])
+        ticks = np.arange(0, 1.1, 0.2)
+
         ax[i][j].set_xticks(ticks)
         #ax[i][j].set_yticks(np.arange(-1, 1.01, 0.5))
         ax[i][j].tick_params(axis='both', labelsize=16)
@@ -580,7 +598,7 @@ Line2D([0],[0],linestyle='--',color=cmap(0.2),label='Classic algorithm')
 
 # Leyenda global
 fig.legend(handles=legend_elements,fontsize=18,loc='lower center',
-           bbox_to_anchor=(0.5, .95),ncol=2)
+           bbox_to_anchor=(0.5, .9),ncol=2)
 name="T_mean"
 plt.savefig(directory_s+name+".pdf",bbox_inches="tight")
 plt.close()
