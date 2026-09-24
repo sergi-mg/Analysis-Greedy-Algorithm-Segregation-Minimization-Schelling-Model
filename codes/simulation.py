@@ -227,8 +227,8 @@ def our_model(M_i, tau, alpha, L, rho_0):
     T_f=0 #number of movements
 
     #algorithm
-    for g in range(1000):
-        if g==999:
+    for g in range(1000000):
+        if g==999999:
             print("Final state not reached for alpha=",alpha," and rho_0=",rho_0)
         #end if
         if N_uh==0:
@@ -288,7 +288,372 @@ def our_model(M_i, tau, alpha, L, rho_0):
 
     return S_f,H_f,T_f
 
+#------------------------------------------------------------------------------------------------
+#Improved version
+#------------------------------------------------------------------------------------------------
+@njit
+def systems_state(matrix,threshold,L,rho_0):
 
+
+    limit=1 #Moore Neighbpurhood
+    
+    #outputs
+    N_dif=0
+    N_same=0
+    N_happy=0
+    Ms=np.zeros((L,L,3),dtype=np.int64)
+
+    #loop
+    for i in range(L):
+        for j in range(L):
+            if matrix[i,j]!=0:
+                for k in range(i-limit,i+limit+1):
+                    for l in range(j-limit,j+limit+1):
+                        if not ((i==k and j==l) or (k<0 or k>L-1 or l<0 or l>L-1)):
+                            if matrix[k,l]!=0:
+                                if matrix[i,j]==matrix[k,l]:
+                                    Ms[i,j,0]+=1
+                                    N_same+=1
+                                else:
+                                    Ms[i,j,1]+=1
+                                    N_dif+=1
+                                #endif
+                            #endif
+                        #endif
+                    #end for
+                #end for
+                if (Ms[i,j,0]+Ms[i,j,1])!=0:
+                    if Ms[i,j,1]/(Ms[i,j,0]+Ms[i,j,1])<=threshold:
+                        Ms[i,j,2]=1
+                        N_happy+=1
+                    #endif
+                else:
+                    Ms[i,j,2]=1
+                    N_happy+=1
+                #endif
+            #endif
+        #end for
+    #end for
+    N_same=N_same/2
+    N_dif=N_dif/2
+
+    return Ms,N_same,N_dif,N_happy
+#endfunction
+
+@njit
+def movement(new_coord,threshold,L,rho_0,matrix,Ms):
+
+    limit=1 #Moore Neighbpurhood
+
+    i_n=new_coord[0]
+    j_n=new_coord[1]
+
+    Mc=Ms.copy()
+
+
+    delta_h=0
+    delta_Ni=0
+    delta_Ndif=0
+
+    Mc[i_n,j_n,:]=[0,0,0]
+
+    happy=0
+
+    sign=matrix[new_coord[0],new_coord[1]]
+
+    for k in range(i_n-limit,i_n+limit+1):
+        for l in range(j_n-limit,j_n+limit+1):
+            if not ((i_n==k and j_n==l) or (k<0 or k>L-1 or l<0 or l>L-1)):
+                if matrix[k,l]!=0:
+                    if sign==matrix[k,l]:
+                        Mc[k,l,0]+=1
+                        Mc[i_n,j_n,0]+=1
+                        delta_Ni+=1
+                    else:
+                        Mc[k,l,1]+=1
+                        Mc[i_n,j_n,1]+=1
+                        delta_Ndif+=1
+                    #endif
+                    #happines
+                    if Mc[k,l,1]/(Mc[k,l,0]+Mc[k,l,1])<=threshold:
+                        Mc[k,l,2]=1
+                    else:
+                        Mc[k,l,2]=0
+                    #endif
+
+                    if Mc[k,l,2]>Ms[k,l,2]:
+                        delta_h+=1
+                    elif Mc[k,l,2]<Ms[k,l,2]:
+                        delta_h-=1
+                    #endif
+                #endif
+
+                
+            #endif
+        #end for
+    #end for
+    if (Mc[i_n,j_n,0]+Mc[i_n,j_n,1])!=0:
+        if Mc[i_n,j_n,1]/(Mc[i_n,j_n,0]+Mc[i_n,j_n,1])<=threshold:
+            Mc[i_n,j_n,2]=1
+            delta_h+=1
+            happy=1
+        #endif
+    else:
+        Mc[i_n,j_n,2]=1
+        delta_h+=1
+        happy=1
+    #endif
+
+    return delta_Ni,delta_Ndif,delta_h,happy
+#end function
+
+#Classic Schelling
+@njit
+def classic_schelling_2(M_i, tau, L, rho_0):
+    """Executes the classic algorithm and returns a tupple with the final
+    configuration, a tupple with (T,h,G,H,S) from the G_function
+    applied to the final configuration and the number of iterations."""
+
+    limit=1
+
+    M=M_i.copy()
+
+    N_v=int(round((rho_0)*L**2,0))
+    N_uh=1 #different from zero to enter the loop
+    T_f=0 #number of movements
+    alpha=0.5 #it will not be used, only for reusing the system's state evaluation function
+
+    #algorithm
+    for g in range(1000):
+        if g==999:
+            print("Final state not reached for alpha=",alpha," and rho_0=",rho_0)
+        #end if
+        if N_uh==0:
+            break
+        #end if 
+        #how many unhappy agents? where? 
+        G_out,H_out,S_out,vacants,uh_list,N_uh_out=G_function(M,tau,alpha,L,rho_0)
+        if N_uh_out==0:
+            break
+        #end if 
+        #movement selection
+        N_uh=N_uh_out
+        for i in range(N_uh_out):
+            #we chose an unhappy agent at random
+            rand_uh=np.random.randint(0,N_uh)
+            #we look for the most suitable movement
+            vacants_try=vacants.copy()
+            N_p_v=N_v #possible vacants
+            move_agent=0 #check for movement
+            for j in range(N_v):
+                #select a random vacant
+                rand_vacant=np.random.randint(0,N_p_v)
+
+                #movement
+                M[vacants_try[rand_vacant,0],vacants_try[rand_vacant,1]]=M[uh_list[rand_uh,0],uh_list[rand_uh,1]]
+                M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=0
+
+                #if the agent is unhappy we discard this movement and check new vacant 
+                unhappy=0
+
+                x=vacants_try[rand_vacant,0]
+                y=vacants_try[rand_vacant,1]
+                sign=M[x,y]
+
+                Ni,Nd=0,0
+
+                for k in range(x-limit,x+limit+1):
+                    for l in range(y-limit,y+limit+1):
+                        if not ((x==k and y==l) or (k<0 or k>L-1 or l<0 or l>L-1)):
+                            if M[k,l]!=0:
+                                if sign==M[k,l]:
+                                    Ni+=1
+                                else:
+                                    Nd+=1
+                                #endif
+                            #endif
+                        #endif
+                    #end for
+                #end for
+
+                if Ni+Nd!=0:
+                    if Nd/(Nd+Ni)>tau:
+                        unhappy=1
+                    #endif
+                #endif
+
+                if unhappy==0:
+                    T_f=T_f+1
+                    move_agent=1
+                    break
+                else:
+                    #the agent cannot move, we go to the following vacant
+
+                    #return to original form
+                    M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=M[vacants_try[rand_vacant,0],vacants_try[rand_vacant,1]]
+                    M[vacants_try[rand_vacant,0],vacants_try[rand_vacant,1]]=0
+
+                    vacants_try[rand_vacant,:]=vacants_try[N_p_v-1,:]
+                    vacants_try[N_p_v-1,:]=[0,0]
+                    N_p_v=N_p_v-1
+                    if N_p_v==0:
+                        break
+                    #endif
+                #endif
+
+            #end for
+            #we check if the agent has moved
+            if move_agent==1:
+                break
+            else:
+                #the agent cannot move, we go to the following agent
+                uh_list[rand_uh,:]=uh_list[N_uh-1,:]
+                uh_list[N_uh-1,:]=[0,0]
+                N_uh=N_uh-1
+                if N_uh==0:
+                    break
+                #endif
+            #endif
+        #end for
+    #end for
+
+    G_out,H_out,S_out,vacants_out,uh_list_out,N_uh_try=G_function(M,tau,alpha,L,rho_0)
+    S_f=S_out
+    H_f=H_out
+
+    return S_f,H_f,T_f
+
+    
+
+#greedy algorithm
+@njit
+def our_model_2(M_i, tau, alpha, L, rho_0):
+    """Executes the greedy algorithm and returns a tupple with the final
+    configuration, a tupple with (T,h,G,H,S) from the G_function
+    applied to the final configuration and the number of iterations."""
+
+    M=M_i.copy()
+
+    N_v=int(round((rho_0)*L**2,0))
+    G_list=np.zeros(N_v)
+    N_uh=1 #different from zero to enter the loop
+    T_f=0 #number of movements
+        #initial state
+    Ms,Ni,Ndif,Nh=systems_state(M_i,tau,L,rho_0)
+    #number of agents 
+    N_a=int(round((1-rho_0)*L**2,0))
+
+
+    #algorithm
+    for g in range(1000000):
+        if g==999999:
+            print("Final state not reached for alpha=",alpha," and rho_0=",rho_0)
+        #end if
+        if N_uh==0:
+            break
+        #end if 
+        #how many unhappy agents? where? 
+        G_out,H_out,S_out,vacants,uh_list,N_uh_out=G_function(M,tau,alpha,L,rho_0)
+        if N_uh_out==0:
+            break
+        #end if 
+        #movement selection
+        N_uh=N_uh_out
+        for i in range(N_uh_out):
+            #we chose an unhappy agent at random
+            rand_uh=np.random.randint(0,N_uh)
+            #changes in old neighbourhood (removing the agent but not adding it)
+            i_rand=uh_list[rand_uh,0]
+            j_rand=uh_list[rand_uh,1]
+            limit=1 #Moore Neighbourhood
+            M_mod=Ms.copy()
+            d_h=0
+            d_Ni=0
+            d_Ndif=0
+            sign=M[i_rand,j_rand]
+            for k in range(i_rand-limit,i_rand+limit+1):
+                for l in range(j_rand-limit,j_rand+limit+1):
+                    if not ((i_rand==k and j_rand==l) or (k<0 or k>L-1 or l<0 or l>L-1)):
+                        if M[k,l]!=0:
+                            if sign==M[k,l]:
+                                M_mod[k,l,0]-=1
+                                d_Ni-=1
+                            else:
+                                M_mod[k,l,1]-=1
+                                d_Ndif-=1
+                            #endif
+                        #endif
+                        if (M_mod[k,l,0]+M_mod[k,l,1])!=0:
+                            if M_mod[k,l,1]/(M_mod[k,l,0]+M_mod[k,l,1])<=tau:
+                                M_mod[k,l,2]=1
+                            else:
+                                M_mod[k,l,2]=0
+                            #endif
+                        else:
+                            M_mod[k,l,2]=1
+                        #endif
+                        if M_mod[k,l,2]>Ms[k,l,2]:
+                            d_h+=1
+                        elif M_mod[k,l,2]<Ms[k,l,2]:
+                            d_h-=1
+                        #endif
+                    #endif
+                #end for
+            #end for
+            #we look for the most suitable movement
+            for j in range(N_v):
+                #changes in new neighbourhood (adding the agent to its new position)
+
+                #movement
+                M[vacants[j,0],vacants[j,1]]=M[uh_list[rand_uh,0],uh_list[rand_uh,1]]
+                M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=0
+
+                d_Ni_2,d_Ndif_2,d_h_2,happy=movement(vacants[j,:],tau,L,rho_0,M,M_mod)
+
+                #G calculus
+                if happy==0:
+                    G_out=10.
+                else:
+                    new_Ni=Ni+d_Ni+d_Ni_2
+                    new_Ndif=Ndif+d_Ndif+d_Ndif_2
+                    new_Nh=Nh+d_h+d_h_2
+                    G_out=alpha*new_Ni/(new_Ni+new_Ndif)+(1.-alpha)*new_Nh/N_a
+                #endif
+
+                G_list[j]=G_out
+
+                #return to original form
+                M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=M[vacants[j,0],vacants[j,1]]
+                M[vacants[j,0],vacants[j,1]]=0
+            #end for
+
+            #now we look for the minimum value of G
+            vacant_min=np.argmin(G_list)
+            G_min=G_list[vacant_min]
+            if G_min>=9.0:
+                #the agent cannot move, we go to the following agent
+                uh_list[rand_uh,:]=uh_list[N_uh-1,:]
+                uh_list[N_uh-1,:]=[0,0]
+                N_uh=N_uh-1
+                if N_uh==0:
+                    break
+                #endif
+            else:
+                #we execute the movement and restart the movement selection
+                M[vacants[vacant_min,0],vacants[vacant_min,1]]=M[uh_list[rand_uh,0],uh_list[rand_uh,1]]
+                M[uh_list[rand_uh,0],uh_list[rand_uh,1]]=0
+                #we have to update Ms
+                Ms,Ni,Ndif,Nh=systems_state(M,tau,L,rho_0)
+                T_f=T_f+1
+                break
+            #endif
+        #end for
+    #end for
+    G_out,H_out,S_out,vacants_out,uh_list_out,N_uh_try=G_function(M,tau,alpha,L,rho_0)
+    S_f=S_out
+    H_f=H_out
+
+    return S_f,H_f,T_f
 #------------------------------------------------------------------------------------------------
 #Simulation: greedy algorithm
 #------------------------------------------------------------------------------------------------
@@ -297,7 +662,7 @@ print("Simulation greedy")
 
 # Parameters
 tau=0.5
-L=20
+L=40
 
 e=10**(-5)
 
@@ -330,7 +695,7 @@ if not exists(directory_f):
 
 counter=0
 seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim) #first 500
-seed_values=seed_values+len(rho_0_values)*len(alpha_values)*N_sim #second 500
+#seed_values=seed_values+len(rho_0_values)*len(alpha_values)*N_sim #second 500
 print("Start simulations")
 for i_r in range(np.size(rho_0_values)):
     rho_0=rho_0_values[i_r]
@@ -352,7 +717,7 @@ for i_r in range(np.size(rho_0_values)):
                                                 fD_M.close() #only for fortran simulation"""
 
             # Python Simulation
-            final_state=our_model(M_i,tau,alpha,L,rho_0)
+            final_state=our_model_2(M_i,tau,alpha,L,rho_0)
             data[i][:3]=final_state[:]
 
             # Fortran Simulation
@@ -372,7 +737,7 @@ for i_r in range(np.size(rho_0_values)):
         counter+=1
 
         #save the data
-        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_2.dat"
+        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat"
         np.savetxt(name,data)
 
 
@@ -386,14 +751,14 @@ print("Simulation classic")
 
 # Parameters
 tau=0.5
-L=20
+L=40
 
 e=10**(-5)
 
 
-rho_0_values_c=np.arange(0.1,0.5+e,0.1)
+rho_0_values_c=np.arange(0.1,0.5,0.1)
 
-N_sim=1000
+N_sim=500
 
 # Saving directories
 from os.path import exists
@@ -421,7 +786,7 @@ for i_r in range(np.size(rho_0_values_c)):
         M_i=initial_matrix(L,rho_0,0.5)
 
         # Python Simulation
-        final_state=classic_schelling(M_i,tau,L,rho_0)
+        final_state=classic_schelling_2(M_i,tau,L,rho_0)
         data_c[i][:]=final_state[:]
 
     #end for
@@ -429,7 +794,7 @@ for i_r in range(np.size(rho_0_values_c)):
     counter+=1
 
     #save the data
-    name=directory_c+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat"
+    name=directory_c+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat"
     np.savetxt(name,data_c)
 
 #end for
