@@ -617,7 +617,11 @@ def our_model_2(M_i, tau, alpha, L, rho_0):
                     new_Ni=Ni+d_Ni+d_Ni_2
                     new_Ndif=Ndif+d_Ndif+d_Ndif_2
                     new_Nh=Nh+d_h+d_h_2
-                    G_out=alpha*new_Ni/(new_Ni+new_Ndif)+(1.-alpha)*new_Nh/N_a
+                    if (new_Ni+new_Ndif)!=0:
+                        G_out=alpha*new_Ni/(new_Ni+new_Ndif)+(1.-alpha)*new_Nh/N_a
+                    else:
+                        G_out=(1.-alpha)*new_Nh/N_a
+                    #endif
                 #endif
 
                 G_list[j]=G_out
@@ -662,7 +666,7 @@ print("Simulation greedy")
 
 # Parameters
 tau=0.5
-L=40
+L=20
 
 e=10**(-5)
 
@@ -751,7 +755,7 @@ print("Simulation classic")
 
 # Parameters
 tau=0.5
-L=40
+L=20
 
 e=10**(-5)
 
