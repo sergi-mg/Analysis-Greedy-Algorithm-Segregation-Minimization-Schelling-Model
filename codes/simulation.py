@@ -575,6 +575,7 @@ def our_model_2(M_i, tau, alpha, L, rho_0):
                 for l in range(j_rand-limit,j_rand+limit+1):
                     if not ((i_rand==k and j_rand==l) or (k<0 or k>L-1 or l<0 or l>L-1)):
                         if M[k,l]!=0:
+
                             if sign==M[k,l]:
                                 M_mod[k,l,0]-=1
                                 d_Ni-=1
@@ -582,21 +583,23 @@ def our_model_2(M_i, tau, alpha, L, rho_0):
                                 M_mod[k,l,1]-=1
                                 d_Ndif-=1
                             #endif
-                        #endif
-                        if (M_mod[k,l,0]+M_mod[k,l,1])!=0:
-                            if M_mod[k,l,1]/(M_mod[k,l,0]+M_mod[k,l,1])<=tau:
-                                M_mod[k,l,2]=1
+                            #happines
+                            if (M_mod[k,l,0]+M_mod[k,l,1])!=0:
+                                if M_mod[k,l,1]/(M_mod[k,l,0]+M_mod[k,l,1])<=tau:
+                                    M_mod[k,l,2]=1
+                                else:
+                                    M_mod[k,l,2]=0
+                                #endif
                             else:
-                                M_mod[k,l,2]=0
+                                M_mod[k,l,2]=1
                             #endif
-                        else:
-                            M_mod[k,l,2]=1
+                            if M_mod[k,l,2]>Ms[k,l,2]:
+                                d_h+=1
+                            elif M_mod[k,l,2]<Ms[k,l,2]:
+                                d_h-=1
+                            #endif
                         #endif
-                        if M_mod[k,l,2]>Ms[k,l,2]:
-                            d_h+=1
-                        elif M_mod[k,l,2]<Ms[k,l,2]:
-                            d_h-=1
-                        #endif
+                        
                     #endif
                 #end for
             #end for
@@ -618,9 +621,9 @@ def our_model_2(M_i, tau, alpha, L, rho_0):
                     new_Ndif=Ndif+d_Ndif+d_Ndif_2
                     new_Nh=Nh+d_h+d_h_2
                     if (new_Ni+new_Ndif)!=0:
-                        G_out=alpha*new_Ni/(new_Ni+new_Ndif)+(1.-alpha)*new_Nh/N_a
+                        G_out=alpha*new_Ni/(new_Ni+new_Ndif)-(1.-alpha)*new_Nh/N_a
                     else:
-                        G_out=(1.-alpha)*new_Nh/N_a
+                        G_out=-(1.-alpha)*new_Nh/N_a
                     #endif
                 #endif
 
@@ -666,7 +669,7 @@ print("Simulation greedy")
 
 # Parameters
 tau=0.5
-L=20
+L=40
 
 e=10**(-5)
 
@@ -755,7 +758,7 @@ print("Simulation classic")
 
 # Parameters
 tau=0.5
-L=20
+L=40
 
 e=10**(-5)
 
