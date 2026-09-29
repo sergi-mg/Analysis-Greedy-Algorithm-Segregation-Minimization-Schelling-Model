@@ -672,39 +672,72 @@ titles=[r"$\mathcal{S}$",r"$\mathcal{H}$",r"$\mathcal{T}$"]
 variables=["S","H","T"]
 
 #Python
-zmin=[0.7,0.996,0]
-zmax=[0.9,1,200]
+zmin=[0.7,0.996,0,0]
+zmax=[0.9,1,200,850]
 subtitles=["$L=20$","$L=40$"]
 for v in range(3):
 
-    Z=results_p[:,:,v]
-
     fig,ax=plt.subplots(1,2,figsize=(20,6))
 
-    for j in range(2):
-        Z=results_p[:,:,v,j]
+    if v!=2:
 
-        im=ax[j].pcolormesh(
-            alpha_edges,rho_edges,Z.T,
-            cmap='viridis',
-            vmin=zmin[v],
-            vmax=zmax[v]
-        )
+        for j in range(2):
 
-        ax[j].set_xlabel(r'$\alpha$',fontsize=18)
-        if j==0:
-            ax[j].set_ylabel(r'$\rho_0$',fontsize=18)
-        else:
-            ax[j].set_ylabel('')
+            Z=results_p[:,:,v,j]
 
-        ticks=np.arange(0.1,1,0.1)
-        ax[j].set_yticks(ticks)
-        ax[j].tick_params(axis='both',labelsize=16)
+            im=ax[j].pcolormesh(
+                alpha_edges,rho_edges,Z.T,
+                cmap='viridis'
+                ,vmin=zmin[v],
+                vmax=zmax[v]
+            )
 
-        ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
+            ax[j].set_xlabel(r'$\alpha$',fontsize=18)
+            if j==0:
+                ax[j].set_ylabel(r'$\rho_0$',fontsize=18)
+            else:
+                ax[j].set_ylabel('')
 
-    cbar=fig.colorbar(im,ax=ax)
-    cbar.set_label(titles[v],fontsize=18)
+            ticks=np.arange(0.1,1,0.1)
+            ax[j].set_yticks(ticks)
+            ax[j].tick_params(axis='both',labelsize=16)
+
+            ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
+
+        cbar=fig.colorbar(im,ax=ax)
+        cbar.set_label(titles[v],fontsize=18)
+
+    else:
+
+        for j in range(2):
+
+            fig.subplots_adjust(wspace=0.1)
+
+            Z=results_p[:,:,v,j]
+
+            im=ax[j].pcolormesh(
+                alpha_edges,rho_edges,Z.T,
+                cmap='viridis'
+                ,vmin=zmin[v+j],
+                vmax=zmax[v+j]
+            )
+
+            ax[j].set_xlabel(r'$\alpha$',fontsize=18)
+            if j==0:
+                ax[j].set_ylabel(r'$\rho_0$',fontsize=18)
+            else:
+                ax[j].set_ylabel('')
+
+            ticks=np.arange(0.1,1,0.1)
+            ax[j].set_yticks(ticks)
+            ax[j].tick_params(axis='both',labelsize=16)
+
+            ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
+
+            cbar=fig.colorbar(im,ax=ax[j])
+            cbar.set_label(titles[v],fontsize=18)
+
+
 
     plt.savefig(directory_s+variables[v]+"_heatmap_L.pdf",bbox_inches="tight")
     plt.close()
@@ -737,7 +770,7 @@ for i in range(len(L_values)):
     data_c.append(read_M[:,0])
 
 #limits
-y_min=[0.68,0.68]
+y_min=[0.7,0.7]
 y_max=[0.95,0.95]
 #plot
 cmap = plt.get_cmap("viridis")
@@ -777,15 +810,14 @@ for j in range(2):
     ax[j].axhline(p50,linestyle='--',color=cmap(0.2))
     
     ax[j].set_xlim(-0.02, 1.02)
-    #ax[j].set_ylim(0.65,0.95)
     ticks = np.arange(0, 1.1, 0.2)
 
     ax[j].set_xticks(ticks)
-    #ax[j].set_ylim(y_min[j],y_max[j])
+    ax[j].set_ylim(y_min[j],y_max[j])
     ax[j].tick_params(axis='both', labelsize=16)
     ax[j].set_xticklabels([f"{t:.1f}" for t in ticks])
     if j==0:
-        ax[j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0)$",fontsize=18)
+        ax[j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0=0.2)$",fontsize=18)
     ax[j].set_xlabel(r"$\alpha$",fontsize=18)
     ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
 
@@ -860,7 +892,7 @@ for j in range(2):
     ax[j].set_xticklabels([f"{t:.1f}" for t in ticks])
     
     if j==0:
-        ax[j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0)$",fontsize=18)
+        ax[j].set_ylabel(r"$\mathcal{S}(\alpha,\rho_0=0.2)$",fontsize=18)
     ax[j].set_xlabel(r"$\alpha$",fontsize=18)
     ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
 
@@ -908,8 +940,8 @@ for i in range(len(L_values)):
     data_c.append(read_M[:,2])
 
 #limits
-y_min=[50,50]
-y_max=[275,275]
+y_min=[70,350]
+y_max=[275,1000]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -956,7 +988,7 @@ for j in range(2):
     ax[j].tick_params(axis='both', labelsize=16)
     ax[j].set_xticklabels([f"{t:.1f}" for t in ticks])
     if j==0:
-        ax[j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0)$",fontsize=18)
+        ax[j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0=0.2)$",fontsize=18)
     ax[j].set_xlabel(r"$\alpha$",fontsize=18)
     ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
 
@@ -996,11 +1028,11 @@ for i in range(len(L_values)):
     name="../data_classic/"+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat"
     read_M=np.loadtxt(fname=name,dtype="float64")
     #variables studied
-    data_c.append(read_M[:,0])
+    data_c.append(read_M[:,2])
 
 #limits
-y_min=[100,100]
-y_max=[200,200]
+y_min=[100,400]
+y_max=[200,850]
 #plot
 cmap = plt.get_cmap("viridis")
 #create the subplot
@@ -1011,8 +1043,8 @@ for j in range(2):
     rho_0=0.2
     L=L_values[j]
     index=3
-    results=results_p[:,index,0,j]
-    d_results=d_results_p[:,index,0,j]
+    results=results_p[:,index,2,j]
+    d_results=d_results_p[:,index,2,j]
     ax[j].errorbar(alpha_values,results,xerr=0,yerr=d_results,marker="o",markersize=3.5,linestyle="None",
         color=cmap(0.67))
 
@@ -1028,12 +1060,12 @@ for j in range(2):
     ticks = np.arange(0, 1.1, 0.2)
 
     ax[j].set_xticks(ticks)
-    ax[j].set_ylim(y_min[j],y_max[j])
+    #ax[j].set_ylim(y_min[j],y_max[j])
     ax[j].tick_params(axis='both', labelsize=16)
     ax[j].set_xticklabels([f"{t:.1f}" for t in ticks])
     
     if j==0:
-        ax[j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0)$",fontsize=18)
+        ax[j].set_ylabel(r"$\mathcal{T}(\alpha,\rho_0=0.2)$",fontsize=18)
     ax[j].set_xlabel(r"$\alpha$",fontsize=18)
     ax[j].set_title(subtitles[j],fontsize=18,y=-0.25)
 
