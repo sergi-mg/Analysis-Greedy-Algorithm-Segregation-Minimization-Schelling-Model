@@ -669,7 +669,7 @@ print("Simulation greedy")
 
 # Parameters
 tau=0.5
-L=40
+L=30
 
 e=10**(-5)
 
@@ -758,7 +758,7 @@ print("Simulation classic")
 
 # Parameters
 tau=0.5
-L=40
+L=30
 
 e=10**(-5)
 
