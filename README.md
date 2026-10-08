@@ -1,5 +1,6 @@
 # Analysis-Greedy-Algorithm-Segregation-Minimization-Schelling-Model
-This repository contains the an implementation of a greedy algorithm to minimize segregation in the Schelling's model [1,2]. It is based on the content of my Bachelor's degree in Physics thesis, at Universitat de Barcelona. Advisor: Dr. Emanuele Cozzo.
+This repository contains the an implementation of a greedy algorithm to minimize segregation in the Schelling's model [1,2]. It is based on the content of my Bachelor's degree in Physics thesis, at Universitat de Barcelona.  
+Advisor: Dr. Emanuele Cozzo.
 
 ## Requirements (Python)
 
