@@ -22,7 +22,11 @@ from scipy.optimize import curve_fit
 #initial matrix
 def initial_matrix(L,rho_0,proportion):
     """Returns a LxL matrix with {-1,0,1} with a 0's density rho_0 and a
-    certain proportion of -1's and 1's, proportion=N+/Ntotal."""
+    certain proportion of -1's and 1's, proportion=N+/Ntotal.
+    Inputs:
+        - L: integer, lenght of the side of the square lattice
+        - rho_0: float in (0,1), density of vacancies
+        - proportion: float, N_plus/(N_plus+N_minus)"""
 
     N_plus=int(round((proportion)*(1-rho_0)*L**2,0))
     N_minus=int(round((1-proportion)*(1-rho_0)*L**2,0))
@@ -47,14 +51,17 @@ def initial_matrix(L,rho_0,proportion):
 #System's state evaluation 
 @njit
 def G_function(matrix,threshold,alpha,L,rho_0):
-    """Given a matrix 2D, with values {-1,0,1}, a threshold between 0 and 1 and
-    the value alpha of G, returns a tuple containing a matrix T
-    containing the proportion of the other type of agents around, a matrix h
-    where happy agents are given a value 1 and the other positions are 0 and
-    the value of the function G, global segregation and global happines. Agent
-    alone is happy."""
+    """Returns a tuple containing the G value, the global happines H, 
+    th global segregation S, the coordinates of the vacants, the coordinates
+    of the unhappy agents and the number of unhappy agents.
+    Inputs:
+        - matrix: state's matrix, shape (L,L), values {-1,0,1}
+        - threshold: float, tolerance, [0,1]
+        - alpha: float, alpha value, [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)"""
 
-    #kernel 
+    #kernel - Moore Neighbourhood 
     kernel=np.ones((3,3),dtype="float64")
     kernel[1,1]=0
     limit=1 #int(3/2)
@@ -119,9 +126,13 @@ def G_function(matrix,threshold,alpha,L,rho_0):
 #Classic Schelling
 @njit
 def classic_schelling(M_i, tau, L, rho_0):
-    """Executes the classic algorithm and returns a tupple with the final
-    configuration, a tupple with (T,h,G,H,S) from the G_function
-    applied to the final configuration and the number of iterations."""
+    """Executes the classic algorithm and returns a tupple with the final global happines H, 
+    the final global segregation S, and the number of movements needed.
+    Input:
+        - M_i: initial state's matrix, shape (L,L), values {-1,0,1}
+        - tau: float, tolerance in [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)"""
 
     M=M_i.copy()
 
@@ -215,9 +226,14 @@ def classic_schelling(M_i, tau, L, rho_0):
 #Greedy algorithm
 @njit
 def our_model(M_i, tau, alpha, L, rho_0):
-    """Executes the greedy algorithm and returns a tupple with the final
-    configuration, a tupple with (T,h,G,H,S) from the G_function
-    applied to the final configuration and the number of iterations."""
+    """Executes the greedy algorithm and returns a tupple with the final global happines H, 
+    the final global segregation S, and the number of movements needed.
+    Input:
+        - M_i: initial state's matrix, shape (L,L), values {-1,0,1}
+        - tau: float, tolerance in [0,1]
+        - alpha: float, alpha value, [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)"""
 
     M=M_i.copy()
 
@@ -294,6 +310,22 @@ def our_model(M_i, tau, alpha, L, rho_0):
 @njit
 def systems_state(matrix,threshold,L,rho_0):
 
+    """Evaluates the system's state.
+    Inputs: 
+        - matrix: state's matrix, shape (L,L), values {-1,0,1}
+        - threshold: float, tolerance, [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)
+    Outputs:
+        - Ms: shape (L,L,3) array conatining number of same
+        type agents in the neighbourhood [x,y,0], the number of
+        other type agents [x,y,1] and the happines of the agent
+        [x,y,2]; only for non-zero matrix[x,y].
+        - N_same: number of equal agent pairs
+        - N_dif: number of non-equal agent pairs
+        - N_happy: number of happpy agents
+        """
+
 
     limit=1 #Moore Neighbpurhood
     
@@ -342,6 +374,20 @@ def systems_state(matrix,threshold,L,rho_0):
 
 @njit
 def movement(new_coord,threshold,L,rho_0,matrix,Ms):
+    """Evaluates the changes in the new neighbourhood when a moving
+    agent is added.
+    Inputs: 
+        - new_coord: 1D array, coordinates where the agent is moving
+        - threshold: float, tolerance, [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)
+        - matrix: 2D array, updated mnatrix (movement executed)
+        - Ms: array shaped (L,L,3), updated after the removal
+    Outputs:
+        - delta_Ni: variation of equal agent pairs
+        - delta_Ndif: variation of non-equal agent pairs
+        - delta_h: variation of happy agents
+        - happy: new agent is hhapy? 0 no, 1 yes"""
 
     limit=1 #Moore Neighbpurhood
 
@@ -410,9 +456,13 @@ def movement(new_coord,threshold,L,rho_0,matrix,Ms):
 #Classic Schelling
 @njit
 def classic_schelling_2(M_i, tau, L, rho_0):
-    """Executes the classic algorithm and returns a tupple with the final
-    configuration, a tupple with (T,h,G,H,S) from the G_function
-    applied to the final configuration and the number of iterations."""
+    """Executes the classic algorithm and returns a tupple with the final global happines H, 
+    the final global segregation S, and the number of movements needed.
+    Input:
+        - M_i: initial state's matrix, shape (L,L), values {-1,0,1}
+        - tau: float, tolerance in [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)"""
 
     limit=1
 
@@ -528,9 +578,14 @@ def classic_schelling_2(M_i, tau, L, rho_0):
 #greedy algorithm
 @njit
 def our_model_2(M_i, tau, alpha, L, rho_0):
-    """Executes the greedy algorithm and returns a tupple with the final
-    configuration, a tupple with (T,h,G,H,S) from the G_function
-    applied to the final configuration and the number of iterations."""
+    """Executes the greedy algorithm and returns a tupple with the final global happines H, 
+    the final global segregation S, and the number of movements needed.
+    Input:
+        - M_i: initial state's matrix, shape (L,L), values {-1,0,1}
+        - tau: float, tolerance in [0,1]
+        - alpha: float, alpha value, [0,1]
+        - L: int, length of the lattice's side
+        - rho_0: foat, vacancy density, (0,1)"""
 
     M=M_i.copy()
 
@@ -669,7 +724,7 @@ print("Simulation greedy")
 
 # Parameters
 tau=0.5
-L=30
+L=20
 
 e=10**(-5)
 
@@ -692,6 +747,8 @@ directory_s="../data/"
 if not exists(directory_s):
     makedirs(directory_s)
 
+# commented code is for fortran simulations, more detailed information in the ReadMe file
+
 """directory_m="../matrix/"
 if not exists(directory_m):
     makedirs(directory_m)
@@ -701,14 +758,16 @@ if not exists(directory_f):
     makedirs(directory_f)"""
 
 counter=0
-seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim) #first 500
-#seed_values=seed_values+len(rho_0_values)*len(alpha_values)*N_sim #second 500
+#seed values change depending if they are for a second file with the same parameters
+seed_values=np.arange(0,len(rho_0_values)*len(alpha_values)*N_sim,N_sim) #first file
+#seed_values=seed_values+len(rho_0_values)*len(alpha_values)*N_sim #second file
+
 print("Start simulations")
 for i_r in range(np.size(rho_0_values)):
     rho_0=rho_0_values[i_r]
     for j_a in range(np.size(alpha_values)):
         alpha=alpha_values[j_a]
-        data=np.zeros((N_sim,3),dtype="float64") #change 3 to 6 if you want to also simulate on fortran
+        data=np.zeros((N_sim,3),dtype="float64") #change 3 to 6 if you want to simulate in both Python and Fortran
 
         for i in range(N_sim):
 
@@ -717,6 +776,7 @@ for i_r in range(np.size(rho_0_values)):
             # Initial Condition
             M_i=initial_matrix(L,rho_0,0.5)
 
+            #Fortran simulations
             """fD_M=open(directory_m+"matrix.dat", "w")
                                                 np.savetxt(fD_M, M_i, fmt="%d")           
                                                 fD_M.flush()
@@ -727,8 +787,7 @@ for i_r in range(np.size(rho_0_values)):
             final_state=our_model_2(M_i,tau,alpha,L,rho_0)
             data[i][:3]=final_state[:]
 
-            # Fortran Simulation
-                                    
+            # Fortran Simulation              
             """if alpha!=0:
                 cmd = ["./schelling.exe", str(L), str(alpha)+"d0", str(tau)+"d0", str(rho_0)+"d0", str(counter)]
             else:
@@ -739,12 +798,15 @@ for i_r in range(np.size(rho_0_values)):
             results=np.loadtxt("../data_results_fortran/results_simulation.dat"
                                ,usecols=[-3,-2,-1])
 
-            data[i][3:]=results[:]"""
+            data[i][3:]=results[:] #change to data[i][:] is you do not simulate in python."""
 
         counter+=1
 
         #save the data
-        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat"
+        #original L=20 files
+        #name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat" 
+        #new files for L dependance
+        name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat" 
         np.savetxt(name,data)
 
 
@@ -801,6 +863,9 @@ for i_r in range(np.size(rho_0_values_c)):
     counter+=1
 
     #save the data
+    #original L=20 files
+    #name=directory_c+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat" 
+    #new files for L dependance
     name=directory_c+"rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat"
     np.savetxt(name,data_c)
 

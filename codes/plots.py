@@ -16,7 +16,7 @@ from os import makedirs
 
 @njit
 def statistics(x):
-    """Returns mean and its uncertainty of a 1D vector,
+    """Returns mean and its uncertainty of a 1D vector (x),
     computed over N_i simulations. Returns the mean value
     and its uncertainty (95%)."""
     
@@ -43,7 +43,7 @@ def xifres(values,uncertainties,exp_max,exp_min):
     adecuate number of significant figures. Values and uncertanties
     are 1D matrices and exp_max and exp_min are the power (x) of 10^x
     corresponding to the maximum and minimum order of the uncertainties,
-    if you get 0's in the output try exppanding the exponent range."""
+    if you get 0's in the output try expanding the exponent range."""
     
     values_c=np.zeros_like(values)
     uncertainties_c=np.zeros_like(uncertainties)
@@ -60,6 +60,11 @@ def xifres(values,uncertainties,exp_max,exp_min):
 
 @njit
 def xifres_escalar(value,error,exp_max,exp_min):
+    """Rounds the value and their uncertainty (both floats) with the
+    adecuate number of significant figures. exp_max and exp_min are the
+    power (x) of 10^x corresponding to the maximum and minimum order of
+    the uncertainties, if you get 0's in the output try expanding the
+     exponent range."""
     for k in range(exp_max,exp_min,-1):
         if error>=1.95*np.power(10.0, k):
             value_c=round(value,-k)
@@ -98,9 +103,20 @@ def calc_reg(x,y):
 def statistics_matrix(rho_val,alpha_val,N_sim,program,n_files=1,L_b=False,L_value=0):
     """Reads the files for the rho and alpha (1D arrays) indicated and returns
     the mean and its uncertainty of the three variables S,H,steps for each
-    pair rho-alpha: M[alpha,rho,variable] for mean and uncertainty, two components
-    of the tuple. It also returns the correlation coefficient r of S(steps)
-    for each pair (alpha,rho)."""
+    pair rho-alpha.
+    Inputs:
+        - rho_val: 1D array containing the rho_0 values
+        - alpha_val: 1D array containing the alpha values
+        - N_sim: number of simulations per file
+        - program: str, program used to simulate (Python or Fortran)
+        - n_files: int, number of files
+        - L_b: boolean, L value indicated
+        - L_values: int, L value
+    Outputs:
+        - M[alpha,rho,variable] for mean and uncertainty, first two components
+        of the tuple. 
+        - Correlation coefficient r of S(steps) or each pair (alpha,rho)."""
+
     import numpy as np
     N_alpha=np.size(alpha_val)
     N_rho=np.size(rho_val)
@@ -161,6 +177,10 @@ def statistics_matrix(rho_val,alpha_val,N_sim,program,n_files=1,L_b=False,L_valu
 
 
 def get_edges(values):
+    """Function created with the use of ChatGPT for the heatmap plots. 
+    It returns the edges of the rectangles.
+    Inputs:
+     - values: 1D array with the values of an axis."""
         edges=np.empty(len(values)+1)
         edges[1:-1]=(values[:-1]+values[1:])/2
         edges[0]=values[0]-(values[1]-values[0])/2
@@ -170,7 +190,7 @@ def get_edges(values):
 def raw_data(rho_0,alpha_val,N_sim,index,n_files=1,L_b=False,L_value=0):
     """Reads the files for the indicated rho_0 and returns the
     raw data (N_sim*n_files,N_alpha) of the final state (expected 
-    file 3 columns - only python). Input:
+    file 3 columns - only python). Inputs:
         - N: number of nodes.
         - N_sim: number of simulations.
         - rho_0: vacantd ensity value.
