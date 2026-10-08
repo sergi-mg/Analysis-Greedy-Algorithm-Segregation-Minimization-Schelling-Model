@@ -9,8 +9,6 @@ import scipy as sp
 from numba import njit
 import random as random
 import subprocess
-import sys
-import time
 import os
 from scipy.optimize import curve_fit
 
@@ -803,7 +801,7 @@ for i_r in range(np.size(rho_0_values)):
         counter+=1
 
         #save the data
-        #original L=20 files
+        #original L=20 files 
         #name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+".dat" 
         #new files for L dependance
         name=directory_s+"alpha_"+str(round(alpha,4))+"_rho_"+str(round(rho_0,4))+"_Nsim_"+str(N_sim)+"_L_"+str(L)+".dat" 
